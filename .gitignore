@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.vscode/
+.idea/
+*.swp
+*.log
+shieldforge_report.html
+shieldforge_report.json
+.DS_Store
