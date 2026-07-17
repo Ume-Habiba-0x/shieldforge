@@ -1,12 +1,27 @@
+# Python
 __pycache__/
 *.py[cod]
+*.pyo
 *.egg-info/
+
+# Virtual Environment
 .venv/
 venv/
+
+# IDEs
 .vscode/
 .idea/
+
+# Editor files
 *.swp
+
+# Logs
 *.log
+
+# Generated Reports
 shieldforge_report.html
 shieldforge_report.json
+
+# OS Files
 .DS_Store
+Thumbs.db
