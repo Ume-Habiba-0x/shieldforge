@@ -1,10 +1,47 @@
-"""ShieldForge — HTML report generator."""
+"""ShieldForge -- HTML report generator."""
 
 from datetime import datetime
+from html import escape
 
 from core.context import Context
 from core.models import Severity
 from reports.base import BaseReport
+
+SEVERITY_ORDER = [Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW, Severity.INFO]
+SEVERITY_RANK = {s: i for i, s in enumerate(SEVERITY_ORDER)}
+
+COLORS = {
+    "CRITICAL": "#dc2626",
+    "HIGH": "#ea580c",
+    "MEDIUM": "#ca8a04",
+    "LOW": "#16a34a",
+    "INFO": "#2563eb",
+}
+
+CSS = """
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f172a;color:#e2e8f0;margin:0;padding:20px}
+.container{max-width:900px;margin:0 auto}
+.header{background:linear-gradient(135deg,#1e293b,#0f172a);padding:30px;border-radius:12px;margin-bottom:20px}
+.header h1{margin:0;color:#00e5ff;font-size:24px;display:flex;align-items:center;gap:12px}
+.risk-badge{font-size:13px;padding:3px 12px;border-radius:6px;color:white;font-weight:700;letter-spacing:.03em}
+.header .meta{color:#94a3b8;margin-top:8px}
+.summary{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.summary-box{background:#1e293b;border-radius:8px;padding:16px 24px;text-align:center;min-width:80px;border-top:3px solid}
+.summary-box .count{font-size:28px;font-weight:700}
+.summary-box .label{font-size:11px;text-transform:uppercase;color:#94a3b8;letter-spacing:0.5px;margin-top:4px}
+.module{margin-bottom:22px}
+.module-header{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid #334155;margin-bottom:10px}
+.module-header h2{font-size:15px;margin:0;color:#e2e8f0;text-transform:capitalize}
+.module-header .count{color:#64748b;font-size:12px}
+.module-errors{background:#3f1d1d;color:#fca5a5;border-radius:6px;padding:8px 12px;font-size:12px;margin-bottom:10px}
+.finding{background:#1e293b;border-radius:8px;margin-bottom:12px;overflow:hidden}
+.finding-header{padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #334155}
+.severity{color:white;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:600;text-transform:uppercase}
+.title{flex:1;font-weight:600}
+.finding-body{padding:14px 16px;font-size:13px;line-height:1.6}
+.evidence{background:#0f172a;padding:10px 14px;border-radius:6px;margin:8px 0;font-family:monospace;font-size:12px;color:#94a3b8}
+.no-findings{text-align:center;color:#64748b;padding:24px}
+"""
 
 
 class HTMLReport(BaseReport):
@@ -13,82 +50,82 @@ class HTMLReport(BaseReport):
         return "html"
 
     def generate(self, context: Context) -> str:
-        findings = context.get_all_findings()
         summary = context.get_summary()
+        risk = self._overall_risk_rating(summary["severity_breakdown"])
 
-        colors = {
-            "CRITICAL": "#dc2626",
-            "HIGH": "#ea580c",
-            "MEDIUM": "#ca8a04",
-            "LOW": "#16a34a",
-            "INFO": "#2563eb",
-        }
+        summary_boxes = "".join(
+            f'<div class="summary-box" style="border-color:{COLORS.get(sev.value, "#666")}">'
+            f'<div class="count" style="color:{COLORS.get(sev.value, "#666")}">'
+            f'{summary["severity_breakdown"].get(sev.value, 0)}</div>'
+            f'<div class="label">{sev.value}</div></div>'
+            for sev in SEVERITY_ORDER
+        )
 
-        findings_html = ""
-        for f in findings:
-            color = colors.get(f.severity.value, "#666")
-            evidence = "<br>".join(f"<b>{k}:</b> {v}" for k, v in f.evidence.items())
-            findings_html += f"""
-            <div class="finding">
-                <div class="finding-header">
-                    <span class="severity" style="background:{color}">{f.severity.value}</span>
-                    <span class="title">{f.title}</span>
-                    <span class="module">{f.module}</span>
-                </div>
-                <div class="finding-body">
-                    <p><b>Description:</b> {f.description}</p>
-                    <div class="evidence">{evidence}</div>
-                    <p><b>Remediation:</b> {f.remediation}</p>
-                    <p><b>Confidence:</b> {f.confidence * 100:.0f}%</p>
-                </div>
-            </div>
-            """
-
-        if not findings_html:
-            findings_html = '<p class="no-findings">No findings detected.</p>'
-
-        summary_boxes = ""
-        for sev in [Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW, Severity.INFO]:
-            count = summary["severity_breakdown"].get(sev.value, 0)
-            color = colors.get(sev.value, "#666")
-            summary_boxes += f"""
-            <div class="summary-box" style="border-color:{color}">
-                <div class="count" style="color:{color}">{count}</div>
-                <div class="label">{sev.value}</div>
-            </div>
-            """
+        if context.scan_results:
+            modules_html = "".join(self._render_module(result) for result in context.scan_results)
+        else:
+            modules_html = '<p class="no-findings">No modules were run.</p>'
 
         return f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
-<title>ShieldForge — Security Scan Report</title>
-<style>
-body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f172a;color:#e2e8f0;margin:0;padding:20px}}
-.container{{max-width:900px;margin:0 auto}}
-.header{{background:linear-gradient(135deg,#1e293b,#0f172a);padding:30px;border-radius:12px;margin-bottom:20px}}
-.header h1{{margin:0;color:#00e5ff;font-size:24px}}
-.header .meta{{color:#94a3b8;margin-top:8px}}
-.summary{{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}}
-.summary-box{{background:#1e293b;border-radius:8px;padding:16px 24px;text-align:center;min-width:80px;border-top:3px solid}}
-.summary-box .count{{font-size:28px;font-weight:700}}
-.summary-box .label{{font-size:11px;text-transform:uppercase;color:#94a3b8;letter-spacing:0.5px;margin-top:4px}}
-.finding{{background:#1e293b;border-radius:8px;margin-bottom:12px;overflow:hidden}}
-.finding-header{{padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #334155}}
-.severity{{color:white;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:600;text-transform:uppercase}}
-.title{{flex:1;font-weight:600}}
-.module{{color:#64748b;font-size:12px}}
-.finding-body{{padding:14px 16px;font-size:13px;line-height:1.6}}
-.evidence{{background:#0f172a;padding:10px 14px;border-radius:6px;margin:8px 0;font-family:monospace;font-size:12px;color:#94a3b8}}
-.no-findings{{text-align:center;color:#64748b;padding:40px}}
-</style></head>
+<title>ShieldForge -- Security Scan Report</title>
+<style>{CSS}</style></head>
 <body><div class="container">
-<div class="header"><h1>ShieldForge Security Report</h1>
-<div class="meta">Target: <b>{context.config.target_url}</b> |
+<div class="header">
+<h1>ShieldForge Security Report
+<span class="risk-badge" style="background:{COLORS.get(risk, "#666")}">{risk} RISK</span>
+</h1>
+<div class="meta">Target: <b>{escape(context.config.target_url)}</b> |
 Scanned: <b>{datetime.now().strftime("%Y-%m-%d %H:%M")}</b> |
 Modules: <b>{summary["modules_run"]}</b> |
 Findings: <b>{summary["total_findings"]}</b></div></div>
 <div class="summary">{summary_boxes}</div>
-<div class="findings">{findings_html}</div>
+{modules_html}
 <div style="text-align:center;color:#475569;font-size:11px;margin-top:30px">
-Generated by ShieldForge v1.0.0 — Forging Secure Applications
+Generated by ShieldForge v1.0.0 -- Forging Secure Applications
 </div>
 </div></body></html>"""
+
+    def _render_module(self, result) -> str:
+        findings = sorted(result.findings, key=lambda f: SEVERITY_RANK.get(f.severity, 99))
+
+        errors_html = ""
+        if result.errors:
+            errors_html = '<div class="module-errors">' + "; ".join(escape(e) for e in result.errors) + "</div>"
+
+        if findings:
+            findings_html = "".join(self._render_finding(f) for f in findings)
+        else:
+            findings_html = '<p class="no-findings">No findings.</p>'
+
+        return f"""<div class="module">
+<div class="module-header"><h2>{escape(result.module_name)}</h2>
+<span class="count">{len(findings)} finding(s)</span></div>
+{errors_html}
+{findings_html}
+</div>"""
+
+    def _render_finding(self, f) -> str:
+        color = COLORS.get(f.severity.value, "#666")
+        evidence_html = "<br>".join(
+            f"<b>{escape(str(k))}:</b> {escape(str(v))}" for k, v in f.evidence.items()
+        )
+        return f"""<div class="finding">
+<div class="finding-header">
+<span class="severity" style="background:{color}">{f.severity.value}</span>
+<span class="title">{escape(f.title)}</span>
+</div>
+<div class="finding-body">
+<p><b>Description:</b> {escape(f.description)}</p>
+<div class="evidence">{evidence_html}</div>
+<p><b>Remediation:</b> {escape(f.remediation)}</p>
+<p><b>Confidence:</b> {f.confidence * 100:.0f}%</p>
+</div>
+</div>"""
+
+    @staticmethod
+    def _overall_risk_rating(severity_breakdown: dict) -> str:
+        for sev in SEVERITY_ORDER:
+            if severity_breakdown.get(sev.value, 0) > 0:
+                return sev.value
+        return "INFO"
