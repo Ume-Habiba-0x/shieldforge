@@ -1,0 +1,54 @@
+# ShieldForge — Information Disclosure wordlist
+# One path per line. Lines starting with # are ignored.
+# Paths are checked relative to the target root.
+
+# Version control
+.git/HEAD
+.git/config
+.git/index
+.git/logs/HEAD
+.svn/entries
+.hg/store/00manifest.i
+
+# Environment / secrets
+.env
+.env.local
+.env.production
+.env.backup
+config.json
+secrets.yml
+credentials.json
+id_rsa
+id_rsa.pub
+
+# Backups & dumps
+backup.zip
+backup.sql
+backup.tar.gz
+site.zip
+www.zip
+db.sql
+database.sql
+dump.sql
+config.php.bak
+config.old
+index.php.bak
+wp-config.php.bak
+wp-config.php.old
+
+# Server / framework artifacts
+.DS_Store
+web.config
+.htaccess
+.htpasswd
+phpinfo.php
+server-status
+composer.lock
+package-lock.json
+Dockerfile
+docker-compose.yml
+
+# Logs
+error.log
+debug.log
+access.log
