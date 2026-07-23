@@ -1,27 +1,38 @@
-# Python
 __pycache__/
 *.py[cod]
+*$py.class
 *.pyo
-*.egg-info/
-
-# Virtual Environment
-.venv/
+*.pyd
+.Python
 venv/
-
-# IDEs
+.venv/
+env/
+.env/
+ENV/
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
 .vscode/
 .idea/
-
-# Editor files
 *.swp
-
-# Logs
-*.log
-
-# Generated Reports
-shieldforge_report.html
-shieldforge_report.json
-
-# OS Files
+*.swo
+*~
 .DS_Store
 Thumbs.db
+reports/*.html
+reports/*.json
+reports/*.txt
+*.log
+.env
+config/secrets.yaml
+config/local.yaml
+*.bak
+*.tmp
+*.orig
