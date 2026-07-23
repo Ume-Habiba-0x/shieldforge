@@ -1,5 +1,14 @@
 requests>=2.31.0
+urllib3>=2.0.0
 beautifulsoup4>=4.12.0
 lxml>=4.9.0
+<<<<<<< HEAD
 loguru>=0.6.0
 pytest>=7.2.0
+=======
+colorama>=0.4.6
+tqdm>=4.66.0
+PySocks>=1.7.1
+pytest>=7.4.0
+pytest-mock>=3.12.0
+>>>>>>> b44bea0509ef3e59239147df4cca3fda733bd83a
